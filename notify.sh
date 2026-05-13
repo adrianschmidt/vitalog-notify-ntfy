@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# vitalog-notify-ntfy: bash notifier that reads `vitalog status --json`
+# vitalog-notify-ntfy: bash notifier that reads `vitalog status`
 # and POSTs new-edge reminders to an ntfy.sh topic.
 #
 # Run via launchd every 15 min (see com.vitalog-notify.plist.example).
@@ -123,11 +123,11 @@ main() {
     # Pull the current status. A non-zero exit or invalid JSON aborts
     # the run with no state write; launchd will retry in 15 min.
     local current
-    if ! current=$("$VITALOG_BIN" status --json 2>/dev/null); then
-        die "vitalog status --json failed (exit non-zero)"
+    if ! current=$("$VITALOG_BIN" status 2>/dev/null); then
+        die "vitalog status failed (exit non-zero)"
     fi
     if ! echo "$current" | jq -e . >/dev/null 2>&1; then
-        die "vitalog status --json produced invalid JSON"
+        die "vitalog status produced invalid JSON"
     fi
 
     # Compute the diff.
