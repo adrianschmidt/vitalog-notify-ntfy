@@ -47,6 +47,7 @@ A small bash notifier that watches [vitalog](https://github.com/adrianschmidt/vi
    ```
 
    Set `NTFY_TOPIC_URL` to your real topic. The next launchd tick (≤ 15 minutes later) picks up the change.
+   The installer sets `~/.config/vitalog-notify/config` to mode `0600` (your eyes only); keep it that way after editing.
 
 ## Testing it works
 

@@ -89,6 +89,11 @@ EOF
         echo "install: $CONFIG_FILE already exists; not touching it"
     fi
 
+    # The config holds a URL that's effectively a shared secret. Ensure
+    # the file is not world-readable, even on re-install of a previously
+    # world-readable config.
+    chmod 600 "$CONFIG_FILE"
+
     # Render plist with absolute paths.
     mkdir -p "$LAUNCH_AGENT_DIR"
     sed \
