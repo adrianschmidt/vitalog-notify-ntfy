@@ -1,0 +1,15 @@
+{
+  "effective_date": "2026-05-13",
+  "reminders": [
+    {
+      "id": "lactic_acid",
+      "display": "Lactic acid training",
+      "interval_days": 2,
+      "last_done": "2026-05-10",
+      "days_since": 3,
+      "due": true,
+      "not_before": null,
+      "not_after": null
+    }
+  ]
+}

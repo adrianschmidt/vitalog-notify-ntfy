@@ -5,9 +5,53 @@
 
 set -euo pipefail
 
+# diff_state: pure function over the current vitalog status JSON
+# and the previous state JSON. Returns (on stdout) a JSON object:
+#   {
+#     "pings":     [{"id":"…","display":"…"}, …],
+#     "new_state": {"effective_date":"…","seen_due":{…}}
+#   }
+#
+# Behaviour:
+#   - If prev.effective_date != current.effective_date, prior
+#     seen_due is wiped (daily reset).
+#   - Each reminder whose current .due is true but whose prior
+#     seen_due[id] was false (or absent) is added to .pings.
+#   - new_state.seen_due is rebuilt from the current reminders
+#     (any removed-from-config reminders drop out).
+#
+# The function does no I/O; it shells out to jq for the actual
+# transformation.
 diff_state() {
-    # Implemented in Task 2.
-    echo '{"pings":[],"new_state":{"effective_date":null,"seen_due":{}}}'
+    local current="$1"
+    local prev="$2"
+    jq -n -c \
+        --argjson current "$current" \
+        --argjson prev "$prev" \
+        '
+        ($current.effective_date) as $today |
+        (
+            if ($prev.effective_date // null) == $today
+            then ($prev.seen_due // {})
+            else {}
+            end
+        ) as $seen_due |
+        {
+            pings: [
+                $current.reminders[]
+                | select(.due == true)
+                | select(($seen_due[.id] // false) == false)
+                | {id: .id, display: .display}
+            ],
+            new_state: {
+                effective_date: $today,
+                seen_due: (
+                    [$current.reminders[] | {key: .id, value: .due}]
+                    | from_entries
+                )
+            }
+        }
+        '
 }
 
 main() {
