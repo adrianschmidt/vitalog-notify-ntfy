@@ -101,10 +101,6 @@ rm -f ~/Library/Logs/vitalog-notify.log
 
 The notifier doesn't care about the server. Run [ntfy](https://docs.ntfy.sh/install/) anywhere reachable from your phone, edit `NTFY_TOPIC_URL` in `~/.config/vitalog-notify/config` to point at the new URL, and point the ntfy phone app at the new server. No script changes.
 
-## Architecture & spec
-
-See `docs/superpowers/specs/2026-05-13-push-notifications-ntfy-design.md` for the full design rationale.
-
 ## Running the tests
 
 ```bash
