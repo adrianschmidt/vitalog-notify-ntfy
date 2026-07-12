@@ -99,15 +99,53 @@ compose_body() {
     fi
 }
 
-# send_ping: POST to ntfy with the reminder's display as the title.
-# Returns 0 on success, non-zero on failure. ntfy uses the request
-# body as the message; a Title header overrides that for the
-# notification title. We send the title via header and an empty body.
+# ping_rows: emit one TSV row per ping — id<TAB>display<TAB>body — with the
+# body already composed via compose_body. Both the dry-run and real-run loops
+# consume this, so the pings→fields→body extraction lives in exactly one place:
+# adding a future body-driver field means touching diff_state's ping projection
+# (where the field is carried onto each ping), the jq projection here, and this
+# helper — but not every loop. A single jq pass replaces the old per-field forks.
+ping_rows() {
+    local pings="$1"
+    local id display streak dpd body
+    # Coalesce JSON null to the literal string "null" so every field is
+    # non-empty. @tsv renders JSON null as an empty field, and because TAB is
+    # IFS-whitespace, `read` collapses consecutive empty fields and drops them
+    # — so a {streak:null, days_past_due:N} row would shift N into $streak and
+    # leave $dpd empty, mis-rendering an overdue reminder as a streak. The
+    # "null" sentinel keeps fields aligned, and compose_body's ^[0-9]+$ guard
+    # already rejects the literal "null".
+    while IFS=$'\t' read -r id display streak dpd; do
+        body=$(compose_body "$streak" "$dpd")
+        printf '%s\t%s\t%s\n' "$id" "$display" "$body"
+    done < <(echo "$pings" | jq -rc '.[] | [.id, .display, (.streak // "null"), (.days_past_due // "null")] | @tsv')
+}
+
+# format_ping_line: print a log line for one ping. Appends " | <body>"
+# only when body is non-empty, so the title-only (empty-body) line stays
+# byte-identical to the pre-body-feature format. The " | " separator is
+# deliberately not an em-dash: the overdue body itself contains an em-dash
+# ("⏰ N days overdue — jump back in!"), so a shared em-dash separator would
+# make the line ambiguous to split.
+format_ping_line() {
+    local base="$1"
+    local body="$2"
+    if [ -n "$body" ]; then
+        printf '%s | %s\n' "$base" "$body"
+    else
+        printf '%s\n' "$base"
+    fi
+}
+
+# send_ping: POST to ntfy with the reminder's display as the title and
+# `body` as the message. Returns 0 on success, non-zero on failure. An
+# empty body produces the same request as before this feature.
 send_ping() {
     local display="$1"
+    local body="$2"
     curl -fsS \
         -H "Title: $display" \
-        -d "" \
+        -d "$body" \
         "$NTFY_TOPIC_URL" \
         >/dev/null
 }
@@ -158,7 +196,10 @@ main() {
         local count
         count=$(echo "$pings" | jq 'length')
         echo "would ping ($count):"
-        echo "$pings" | jq -r '.[] | "  - \(.id): \(.display)"'
+        local id display body
+        while IFS=$'\t' read -r id display body; do
+            format_ping_line "  - $id: $display" "$body"
+        done < <(ping_rows "$pings")
         return 0
     fi
 
@@ -166,32 +207,23 @@ main() {
     # new_state.seen_due back to whatever the previous state had (or
     # to false if it wasn't there). That way the next run will see
     # the same false→true edge and retry.
-    local ping_count
-    ping_count=$(echo "$pings" | jq 'length')
-
-    if [ "$ping_count" -gt 0 ]; then
-        local i=0
-        while [ "$i" -lt "$ping_count" ]; do
-            local id display
-            id=$(echo "$pings" | jq -r ".[$i].id")
-            display=$(echo "$pings" | jq -r ".[$i].display")
-            if send_ping "$display"; then
-                echo "pinged: $id ($display)"
-            else
-                warn "ping failed for $id; will retry next run"
-                # Revert new_state.seen_due[id] to its prior value so
-                # the next run sees the same false→true edge.
-                local prior
-                prior=$(echo "$prev" | jq -c --arg id "$id" '.seen_due[$id] // false')
-                new_state=$(
-                    echo "$new_state" \
-                        | jq -c --arg id "$id" --argjson prior "$prior" \
-                            '.seen_due[$id] = $prior'
-                )
-            fi
-            i=$((i + 1))
-        done
-    fi
+    local id display body
+    while IFS=$'\t' read -r id display body; do
+        if send_ping "$display" "$body"; then
+            format_ping_line "pinged: $id ($display)" "$body"
+        else
+            warn "ping failed for $id ($display); will retry next run"
+            # Revert new_state.seen_due[id] to its prior value so
+            # the next run sees the same false→true edge.
+            local prior
+            prior=$(echo "$prev" | jq -c --arg id "$id" '.seen_due[$id] // false')
+            new_state=$(
+                echo "$new_state" \
+                    | jq -c --arg id "$id" --argjson prior "$prior" \
+                        '.seen_due[$id] = $prior'
+            )
+        fi
+    done < <(ping_rows "$pings")
 
     # Ensure the state directory exists, then write.
     mkdir -p "$(dirname "$STATE_FILE")"
