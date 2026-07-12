@@ -7,10 +7,30 @@ A small bash notifier that watches [vitalog](https://github.com/adrianschmidt/vi
 - Phone-side quiet hours: the notifier fires whenever a reminder flips; your phone's bedtime / DND mode decides whether to wake you.
 - No external service beyond the public `ntfy.sh` server and your phone's ntfy app.
 
+## Notification content
+
+Each notification's **title** is the reminder's name. Its **body** reflects the
+`streak` and `days_past_due` that `vitalog status` reports for that reminder:
+
+- On the day a reminder becomes due — its streak's at-risk day — the body reads
+  `🔥 6 day streak! Don't break it now.`
+- On later days it's still not done, the body counts up:
+  `⏰ 1 day overdue — jump back in!`, `⏰ 2 days overdue — jump back in!`, …
+- If a reminder has neither enabled (or you're on an older vitalog), the body is
+  empty and you get the title-only notification as before.
+
+This layer is a **pure renderer** — whether a reminder shows a streak or a
+days-past-due count is controlled entirely by that reminder's `show_streak` /
+`show_days_past_due` in your **vitalog** config, surfaced as `null` in the JSON
+when off. There is no configuration in this repo for it.
+
 ## Requirements
 
 - macOS with `launchd` (works on any modern macOS).
-- `vitalog` ≥ 1.2 (the version with `[reminders]` and time-gate support) on `$PATH`.
+- `vitalog` on `$PATH`. Reminders need ≥ 1.2 (`[reminders]` + time gates); the
+  streak / days-past-due notification bodies need the release that adds `streak`
+  and `days_past_due` to `vitalog status` (≥ 1.5). Older versions still work —
+  the body is simply empty (title-only pings).
 - `jq` — `brew install jq` if you don't have it.
 - An Android phone with the [ntfy app](https://docs.ntfy.sh/subscribe/phone/) installed (Play Store or F-Droid). Also works on iOS via [ntfy on the App Store](https://apps.apple.com/us/app/ntfy/id1625396347).
 
@@ -66,7 +86,10 @@ A small bash notifier that watches [vitalog](https://github.com/adrianschmidt/vi
    ./notify.sh --dry-run
    ```
 
-   Prints `would ping (N):` followed by `  - <id>: <display>` lines for each reminder currently due. No POST, no state write. Use this to verify your `[reminders]` config is being read the way you expect.
+   Prints `would ping (N):` followed by `  - <id>: <display> | <body>` lines for
+   each reminder currently due (the `| <body>` suffix is omitted when the
+   reminder has no streak/overdue text). No POST, no state write. Use this to
+   verify your `[reminders]` config and the rendered message text.
 
 3. **Watch the logs.**
 
