@@ -9,7 +9,9 @@
       "days_since": 3,
       "due": true,
       "not_before": null,
-      "not_after": null
+      "not_after": null,
+      "streak": 0,
+      "days_past_due": 1
     }
   ]
 }

@@ -9,7 +9,9 @@
       "days_since": 3,
       "due": true,
       "not_before": null,
-      "not_after": null
+      "not_after": null,
+      "streak": 0,
+      "days_past_due": 1
     },
     {
       "id": "brush_evening",
@@ -19,7 +21,9 @@
       "days_since": 0,
       "due": false,
       "not_before": "18:00",
-      "not_after": "23:00"
+      "not_after": "23:00",
+      "streak": 5,
+      "days_past_due": 0
     },
     {
       "id": "weigh_in",
@@ -29,7 +33,9 @@
       "days_since": 1,
       "due": true,
       "not_before": null,
-      "not_after": null
+      "not_after": null,
+      "streak": 4,
+      "days_past_due": 0
     }
   ]
 }

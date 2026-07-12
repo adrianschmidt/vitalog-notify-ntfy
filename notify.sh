@@ -44,7 +44,7 @@ diff_state() {
                 $current.reminders[]
                 | select(.due == true)
                 | select(($seen_due[.id] // false) == false)
-                | {id: .id, display: .display}
+                | {id: .id, display: .display, streak: .streak, days_past_due: .days_past_due}
             ],
             new_state: {
                 effective_date: $today,
