@@ -83,6 +83,22 @@ write_state() {
     mv "$tmp" "$STATE_FILE"
 }
 
+# compose_body: render the ntfy message body from a reminder's streak
+# and days_past_due (raw JSON values as strings: a number, or "null").
+# Streak takes precedence; either being a positive integer wins; anything
+# else (incl. "null", 0, non-numeric) yields an empty body. Total — no errors.
+compose_body() {
+    local streak="$1"
+    local dpd="$2"
+    if [[ "$streak" =~ ^[0-9]+$ ]] && [ "$streak" -ge 1 ]; then
+        printf "🔥 %s day streak! Don't break it now." "$streak"
+    elif [[ "$dpd" =~ ^[0-9]+$ ]] && [ "$dpd" -ge 1 ]; then
+        local unit="days"
+        [ "$dpd" -eq 1 ] && unit="day"
+        printf "⏰ %s %s overdue — jump back in!" "$dpd" "$unit"
+    fi
+}
+
 # send_ping: POST to ntfy with the reminder's display as the title.
 # Returns 0 on success, non-zero on failure. ntfy uses the request
 # body as the message; a Title header overrides that for the
