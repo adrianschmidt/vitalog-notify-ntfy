@@ -1,2 +1,6 @@
 .DS_Store
 *.swp
+
+# Local design/planning docs — kept on disk, not published
+docs/superpowers/
+.superpowers/
